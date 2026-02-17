@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bug & Feature Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        notion: {
+                            bg: '#ffffff',
+                            sidebar: '#fbfbfa',
+                            hover: '#efefef',
+                            border: '#e8e8e8',
+                            text: '#37352f',
+                            secondary: '#787774',
+                            light: '#f7f6f3',
+                            tag: '#e8e5e0',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body { background: #ffffff; color: #37352f; font-family: 'Inter', system-ui, sans-serif; }
+        ::selection { background: rgba(35,131,226,0.28); }
+
+        /* Notion-style scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d3d1cb; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #aeaca6; }
+
+        .modal-overlay { background: rgba(15,15,15,0.6); }
+
+        /* Notion-style badges */
+        .badge { padding: 2px 8px; border-radius: 3px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+        .type-bug { background: #ffe2dd; color: #93000a; }
+        .type-feature { background: #e8deee; color: #6940a5; }
+        .status-open { background: #d3e5ef; color: #1b6a9c; }
+        .status-in_progress { background: #fdecc8; color: #9b6800; }
+        .status-fixed { background: #dbeddb; color: #1e6231; }
+        .status-done { background: #dbeddb; color: #1e6231; }
+        .status-wontfix { background: #e8e8e8; color: #787774; }
+        .priority-critical { background: #ffe2dd; color: #93000a; }
+        .priority-high { background: #fdecc8; color: #9b6800; }
+        .priority-medium { background: #e8e5e0; color: #64635e; }
+        .priority-low { background: #f1f1ef; color: #787774; }
+        .cat-badge { background: #f1f1ef; color: #64635e; }
+
+        /* Notion-style inputs */
+        .n-input {
+            width: 100%; padding: 8px 10px; border: 1px solid #e8e8e8; border-radius: 4px;
+            font-size: 14px; color: #37352f; background: #ffffff; transition: border-color 0.15s;
+        }
+        .n-input:focus { outline: none; border-color: #2383e2; box-shadow: 0 0 0 2px rgba(35,131,226,0.15); }
+        .n-input::placeholder { color: #b4b4b0; }
+        .n-select {
+            padding: 6px 10px; border: 1px solid #e8e8e8; border-radius: 4px;
+            font-size: 13px; color: #37352f; background: #ffffff; cursor: pointer;
+        }
+        .n-select:focus { outline: none; border-color: #2383e2; }
+
+        /* Notion-style buttons */
+        .btn-blue { background: #2383e2; color: #fff; padding: 6px 14px; border-radius: 4px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: background 0.15s; }
+        .btn-blue:hover { background: #1b6ec2; }
+        .btn-ghost { background: transparent; color: #37352f; padding: 6px 10px; border-radius: 4px; font-size: 13px; cursor: pointer; border: none; transition: background 0.1s; }
+        .btn-ghost:hover { background: #efefef; }
+
+        /* Table styles */
+        .items-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+        .items-table th {
+            text-align: left; padding: 6px 10px; font-size: 12px; font-weight: 500;
+            color: #787774; border-bottom: 1px solid #e8e8e8; background: #fbfbfa;
+            position: sticky; top: 0; z-index: 1; user-select: none;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            position: relative;
+        }
+        .items-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 14px; vertical-align: middle; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .items-table td.dropdown-cell { overflow: visible; }
+        .items-table td.dropdown-cell select { min-width: 70px; }
+        .items-table tr:hover td { background: #f7f6f3; }
+        .items-table tbody tr { cursor: pointer; transition: background 0.1s; }
+
+        /* Column resize handle */
+        .col-resize {
+            position: absolute; right: 0; top: 0; bottom: 0; width: 5px;
+            cursor: col-resize; z-index: 2;
+        }
+        .col-resize:hover, .col-resize.active { background: #2383e2; }
+
+        /* Sortable column headers */
+        .items-table th.sortable { cursor: pointer; }
+        .items-table th.sortable:hover { background: #f0efec; }
+        .sort-arrow { display: inline-block; margin-left: 3px; font-size: 10px; color: #b4b4b0; vertical-align: middle; }
+        .sort-arrow.active { color: #37352f; }
+
+        /* Checkbox Notion-style */
+        .n-check { width: 16px; height: 16px; border: 1.5px solid #c3c2bf; border-radius: 3px; appearance: none; cursor: pointer; transition: all 0.15s; position: relative; background: #fff; }
+        .n-check:checked { background: #2383e2; border-color: #2383e2; }
+        .n-check:checked::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+        /* Thumbnail */
+        .thumb { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 1px solid #e8e8e8; flex-shrink: 0; }
+        .thumb:hover { opacity: 0.8; }
+
+        /* Lightbox */
+        .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
+        .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+
+        /* Animation */
+        .fade-in { animation: fadeIn 0.15s ease-out; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+        .toast { animation: slideIn 0.25s ease-out, fadeOut 0.3s ease-in 2.7s; }
+        @keyframes slideIn { from { transform:translateX(100%); opacity:0; } to { transform:translateX(0); opacity:1; } }
+        @keyframes fadeOut { from { opacity:1; } to { opacity:0; } }
+
+        /* Modal card */
+        .modal-card { background: #fff; border-radius: 8px; box-shadow: 0 0 0 1px rgba(15,15,15,0.05), 0 3px 6px rgba(15,15,15,0.1), 0 9px 24px rgba(15,15,15,0.2); }
+
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed #e8e8e8; border-radius: 6px; padding: 16px; text-align: center;
+            cursor: pointer; transition: all 0.15s; color: #787774; font-size: 13px;
+        }
+        .upload-area:hover { border-color: #2383e2; background: #f7f9fc; }
+        .upload-area.dragover { border-color: #2383e2; background: #edf4fd; }
+
+        /* AI Settings & Import */
+        .key-input-wrap { display: flex; gap: 6px; align-items: center; }
+        .key-status { font-size: 12px; margin-top: 6px; }
+        .key-status.valid { color: #1e6231; }
+        .key-status.invalid { color: #93000a; }
+        .key-status.checking { color: #9b6800; }
+        .parsed-items-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .parsed-items-table th { text-align: left; padding: 6px 8px; font-size: 11px; font-weight: 600; color: #787774; border-bottom: 1px solid #e8e8e8; background: #fbfbfa; position: sticky; top: 0; }
+        .parsed-items-table td { padding: 6px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+        .parsed-items-table tr:hover td { background: #f7f6f3; }
+        .import-spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #e8e8e8; border-top-color: #2383e2; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Batch action bar */
+        .batch-bar {
+            display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+            background: #f0f4ff; border: 1px solid #bdd4f7; border-radius: 6px;
+            font-size: 13px; color: #37352f; flex-wrap: wrap;
+        }
+        .batch-bar .batch-count { font-weight: 600; color: #2383e2; white-space: nowrap; }
+        .batch-bar .batch-sep { width: 1px; height: 20px; background: #c5d5e8; flex-shrink: 0; }
+        .batch-bar .batch-label { font-size: 11px; color: #787774; font-weight: 500; white-space: nowrap; }
+        .batch-bar .n-select { padding: 3px 6px; font-size: 12px; }
+        .btn-red { background: #e03e3e; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; border: none; transition: background 0.15s; }
+        .btn-red:hover { background: #c53030; }
+        .items-table tr.row-selected td { background: #edf4fd !important; }
+
+        /* Screenshot preview in modal */
+        .screenshot-preview { position: relative; display: inline-block; }
+        .screenshot-preview img { max-width: 200px; max-height: 140px; border-radius: 6px; border: 1px solid #e8e8e8; }
+        .screenshot-preview .remove-btn {
+            position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+            background: #37352f; color: #fff; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 12px; cursor: pointer;
+            border: 2px solid #fff;
+        }
+
+        /* Mobile card list (hidden on desktop) */
+        #cards-container { display: none; }
+        .item-card {
+            border: 1px solid #e8e8e8; border-radius: 8px; padding: 14px; cursor: pointer;
+            transition: background 0.1s;
+        }
+        .item-card:hover { background: #f7f6f3; }
+        .item-card:active { background: #efefef; }
+
+        /* ===== RESPONSIVE ===== */
+
+        /* Tablet: hide Updated column */
+        @media (max-width: 1024px) {
+            .items-table col:nth-child(9) { width: 0 !important; }
+            .items-table th:nth-child(9),
+            .items-table td:nth-child(9) { display: none; }
+        }
+
+        /* Small tablet: hide both date columns + thumbnail, keep all 4 dropdowns */
+        @media (max-width: 820px) {
+            .items-table col:nth-child(2) { width: 0 !important; }
+            .items-table th:nth-child(2),
+            .items-table td:nth-child(2) { display: none; }
+            .items-table col:nth-child(8) { width: 0 !important; }
+            .items-table th:nth-child(8),
+            .items-table td:nth-child(8) { display: none; }
+            .items-table td { padding: 6px 6px; font-size: 13px; }
+            .items-table th { padding: 5px 6px; font-size: 11px; }
+            .items-table td.dropdown-cell select { min-width: 60px; font-size: 12px; }
+            .items-table col:nth-child(4) { width: 70px !important; }
+            .items-table col:nth-child(5) { width: 90px !important; }
+            .items-table col:nth-child(6) { width: 75px !important; }
+            .items-table col:nth-child(7) { width: 90px !important; }
+        }
+
+        /* Narrow tablet: hide category too */
+        @media (max-width: 680px) {
+            .items-table col:nth-child(5) { width: 0 !important; }
+            .items-table th:nth-child(5),
+            .items-table td:nth-child(5) { display: none; }
+        }
+
+        /* Mobile: switch to card layout */
+        @media (max-width: 560px) {
+            #table-wrapper { display: none !important; }
+            #cards-container { display: flex !important; flex-direction: column; gap: 8px; }
+
+            .app-header-inner { flex-direction: column; align-items: flex-start !important; gap: 6px; }
+            .app-header-right { width: 100%; justify-content: space-between; }
+            .app-content { padding-left: 16px !important; padding-right: 16px !important; }
+
+            .toolbar { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+            .toolbar-filters { flex-wrap: wrap; gap: 6px !important; }
+            .toolbar-filters .n-select { flex: 1; min-width: 0; font-size: 12px; padding: 5px 6px; }
+            .search-wrap input { width: 100% !important; }
+            .search-wrap { width: 100%; }
+
+            .modal-card { border-radius: 0; max-height: 100vh; }
+            #item-modal > div { max-width: 100%; margin: 0; border-radius: 12px 12px 0 0; align-self: flex-end; }
+            #detail-modal { padding: 0 !important; padding-top: 0 !important; }
+            #detail-modal > div { max-width: 100%; border-radius: 0; margin-bottom: 0; min-height: 100vh; }
+
+            .detail-timestamps { flex-direction: column; gap: 2px !important; }
+            .batch-bar { font-size: 12px; gap: 6px; }
+            .batch-bar .batch-sep { display: none; }
+            .batch-bar .n-select { padding: 2px 4px; font-size: 11px; min-width: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Toast Container -->
+<div id="toast-container" class="fixed top-4 right-4 z-[60] flex flex-col gap-2"></div>
+
+<!-- Lightbox -->
+<div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Screenshot">
+</div>
+
+<!-- Auth Screen -->
+<div id="auth-screen" class="min-h-screen flex items-center justify-center p-4 bg-notion-sidebar">
+    <div class="modal-card p-8 w-full max-w-sm fade-in">
+        <div class="text-center mb-6">
+            <div class="text-2xl font-bold text-notion-text mb-1">Bug & Feature Tracker</div>
+            <p class="text-sm text-notion-secondary">Sign in to your workspace</p>
+        </div>
+        <div id="auth-error" class="hidden mb-4 p-3 rounded text-sm bg-red-50 text-red-600 border border-red-200"></div>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1 uppercase tracking-wide">Email</label>
+                <input id="auth-email" type="email" class="n-input" placeholder="you@example.com">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1 uppercase tracking-wide">Password</label>
+                <input id="auth-password" type="password" class="n-input" placeholder="Enter password...">
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="handleLogin()" class="btn-blue flex-1">Sign In</button>
+                <!-- Sign Up suspended -->
+                <!-- <button onclick="handleSignup()" class="btn-ghost flex-1 border border-notion-border">Sign Up</button> -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main App -->
+<div id="app-screen" class="hidden min-h-screen bg-white">
+    <!-- Header -->
+    <header class="border-b border-notion-border bg-white sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto px-6 py-2.5 flex items-center justify-between app-header-inner">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <h1 class="text-sm font-semibold text-notion-text">Bug & Feature Tracker</h1>
+                <span id="item-count" class="text-xs text-notion-secondary ml-1"></span>
+            </div>
+            <div class="flex items-center gap-2 app-header-right">
+                <span id="user-email" class="text-xs text-notion-secondary"></span>
+                <button onclick="openSettings()" class="btn-ghost p-1" title="AI Settings">
+                    <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                </button>
+                <button onclick="handleLogout()" class="btn-ghost text-xs text-notion-secondary">Sign Out</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-6 py-5 app-content">
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center gap-2 mb-4 toolbar">
+            <div class="flex items-center gap-2">
+                <button onclick="openAddModal()" class="btn-blue flex items-center gap-1.5 text-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+                    New
+                </button>
+                <button onclick="openImportModal()" class="btn-ghost border border-notion-border flex items-center gap-1.5 text-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    AI Import
+                </button>
+            </div>
+            <div class="relative search-wrap">
+                <svg class="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-notion-secondary pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                <input id="search-input" type="text" class="n-input text-sm pl-8" style="width:220px;padding-top:5px;padding-bottom:5px" placeholder="Search title or description..." oninput="applyFilters()">
+            </div>
+            <div class="flex-1 hidden sm:block"></div>
+            <div class="flex flex-wrap items-center gap-1.5 toolbar-filters">
+                <select id="filter-type" onchange="applyFilters()" class="n-select">
+                    <option value="">All Types</option>
+                    <option value="bug">Bugs</option>
+                    <option value="feature">Features</option>
+                </select>
+                <select id="filter-status" onchange="applyFilters()" class="n-select">
+                    <option value="">All Status</option>
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="fixed">Fixed</option>
+                    <option value="done">Done</option>
+                    <option value="wontfix">Won't Fix</option>
+                </select>
+                <select id="filter-category" onchange="applyFilters()" class="n-select">
+                    <option value="">All Categories</option>
+                    <option value="critical">Critical</option>
+                    <option value="ui">UI</option>
+                    <option value="workflow">Workflow</option>
+                    <option value="skill">Skill</option>
+                    <option value="improvement">Improvement</option>
+                </select>
+                <select id="filter-priority" onchange="applyFilters()" class="n-select">
+                    <option value="">All Priority</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+                <select id="sort-by" onchange="colSortField=null;colSortDir=null;applyFilters()" class="n-select">
+                    <option value="created_at-desc">Newest</option>
+                    <option value="created_at-asc">Oldest</option>
+                    <option value="updated_at-desc">Updated</option>
+                    <option value="priority-asc">Priority</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Batch Action Bar -->
+        <div id="batch-bar" class="batch-bar mb-3 hidden">
+            <span class="batch-count"><span id="batch-count-num">0</span> selected</span>
+            <div class="batch-sep"></div>
+            <span class="batch-label">Type</span>
+            <select id="batch-type" onchange="batchUpdate('type', this.value); this.value=''" class="n-select">
+                <option value="">--</option>
+                <option value="bug">Bug</option>
+                <option value="feature">Feature</option>
+            </select>
+            <span class="batch-label">Category</span>
+            <select id="batch-category" onchange="batchUpdate('category', this.value); this.value=''" class="n-select">
+                <option value="">--</option>
+                <option value="critical">Critical</option>
+                <option value="ui">UI</option>
+                <option value="workflow">Workflow</option>
+                <option value="skill">Skill</option>
+                <option value="improvement">Improvement</option>
+            </select>
+            <span class="batch-label">Priority</span>
+            <select id="batch-priority" onchange="batchUpdate('priority', this.value); this.value=''" class="n-select">
+                <option value="">--</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+            <span class="batch-label">Status</span>
+            <select id="batch-status" onchange="batchUpdate('status', this.value); this.value=''" class="n-select">
+                <option value="">--</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="fixed">Fixed</option>
+                <option value="done">Done</option>
+                <option value="wontfix">Won't Fix</option>
+            </select>
+            <div class="batch-sep"></div>
+            <button onclick="batchDelete()" class="btn-red flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                Delete
+            </button>
+            <button onclick="clearSelection()" class="btn-ghost text-xs text-notion-secondary">Clear</button>
+        </div>
+
+        <!-- Items Table (desktop/tablet) -->
+        <div id="table-wrapper" class="border border-notion-border rounded-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="items-table" id="main-table">
+                    <colgroup>
+                        <col style="width:36px">
+                        <col style="width:40px">
+                        <col style="width:auto">
+                        <col style="width:80px">
+                        <col style="width:120px">
+                        <col style="width:85px">
+                        <col style="width:110px">
+                        <col style="width:200px">
+                        <col style="width:200px">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" class="n-check" id="select-all-check" onchange="toggleSelectAll(this.checked)" title="Select all"></th>
+                            <th></th>
+                            <th class="sortable" data-sort="title" onclick="colSort(this)"><span>Title</span><span class="sort-arrow"></span><div class="col-resize" data-col="2"></div></th>
+                            <th class="sortable" data-sort="type" onclick="colSort(this)"><span>Type</span><span class="sort-arrow"></span><div class="col-resize" data-col="3"></div></th>
+                            <th class="sortable" data-sort="category" onclick="colSort(this)"><span>Category</span><span class="sort-arrow"></span><div class="col-resize" data-col="4"></div></th>
+                            <th class="sortable" data-sort="priority" onclick="colSort(this)"><span>Priority</span><span class="sort-arrow"></span><div class="col-resize" data-col="5"></div></th>
+                            <th class="sortable" data-sort="status" onclick="colSort(this)"><span>Status</span><span class="sort-arrow"></span><div class="col-resize" data-col="6"></div></th>
+                            <th class="sortable" data-sort="created_at" onclick="colSort(this)"><span>Created</span><span class="sort-arrow"></span><div class="col-resize" data-col="7"></div></th>
+                            <th class="sortable" data-sort="updated_at" onclick="colSort(this)"><span>Updated</span><span class="sort-arrow"></span><div class="col-resize" data-col="8"></div></th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-table"></tbody>
+                </table>
+            </div>
+            <div id="empty-state" class="hidden p-16 text-center">
+                <svg class="w-10 h-10 mx-auto mb-3 text-notion-secondary opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                <p class="text-sm text-notion-secondary">No items found. Click <strong>New</strong> to create one.</p>
+            </div>
+        </div>
+
+        <!-- Mobile Card View -->
+        <div id="cards-container"></div>
+        <div id="empty-state-mobile" class="hidden p-12 text-center">
+            <p class="text-sm text-notion-secondary">No items found. Tap <strong>New</strong> to create one.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div id="item-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-card p-6 w-full max-w-lg fade-in max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-5">
+            <h2 id="modal-title" class="text-base font-semibold text-notion-text">New Item</h2>
+            <button onclick="closeModal('item-modal')" class="btn-ghost p-1">
+                <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <input type="hidden" id="edit-item-id">
+        <div class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-notion-secondary mb-1">Type</label>
+                    <select id="item-type" class="n-select w-full">
+                        <option value="bug">Bug</option>
+                        <option value="feature">Feature</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-notion-secondary mb-1">Category</label>
+                    <select id="item-category" class="n-select w-full">
+                        <option value="critical">Critical</option>
+                        <option value="ui">UI</option>
+                        <option value="workflow">Workflow</option>
+                        <option value="skill">Skill</option>
+                        <option value="improvement">Improvement</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1">Title</label>
+                <input id="item-title-input" type="text" class="n-input" placeholder="Short descriptive title">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1">Description</label>
+                <textarea id="item-description" class="n-input" rows="3" style="resize:none" placeholder="Detailed description..."></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-notion-secondary mb-1">Priority</label>
+                    <select id="item-priority" class="n-select w-full">
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div id="status-field">
+                    <label class="block text-xs font-medium text-notion-secondary mb-1">Status</label>
+                    <select id="item-status" class="n-select w-full">
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="fixed">Fixed</option>
+                        <option value="done">Done</option>
+                        <option value="wontfix">Won't Fix</option>
+                    </select>
+                </div>
+            </div>
+            <!-- Screenshot Upload -->
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1">Screenshot</label>
+                <div id="upload-area" class="upload-area" onclick="document.getElementById('file-input').click()"
+                     ondragover="event.preventDefault(); this.classList.add('dragover')"
+                     ondragleave="this.classList.remove('dragover')"
+                     ondrop="event.preventDefault(); this.classList.remove('dragover'); handleFileDrop(event)">
+                    <svg class="w-5 h-5 mx-auto mb-1 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    Click or drag to attach screenshot
+                </div>
+                <input id="file-input" type="file" accept="image/*" class="hidden" onchange="handleFileSelect(this)">
+                <div id="screenshot-preview" class="hidden mt-2 screenshot-preview">
+                    <img id="preview-img" src="" alt="Preview">
+                    <div class="remove-btn" onclick="removeScreenshot()">&times;</div>
+                </div>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="saveItem()" class="btn-blue flex-1">Save</button>
+                <button onclick="closeModal('item-modal')" class="btn-ghost border border-notion-border flex-1">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div id="detail-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-start justify-center p-4 pt-10 overflow-y-auto">
+    <div class="modal-card w-full max-w-2xl fade-in mb-12">
+        <!-- Detail Header -->
+        <div class="p-6 border-b border-notion-border">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 mb-2 flex-wrap">
+                        <span id="detail-type" class="badge"></span>
+                        <span id="detail-category" class="badge cat-badge"></span>
+                        <span id="detail-priority" class="badge"></span>
+                    </div>
+                    <h2 id="detail-title" class="text-xl font-bold text-notion-text leading-tight"></h2>
+                    <p id="detail-description" class="text-sm text-notion-secondary mt-2 whitespace-pre-wrap leading-relaxed"></p>
+                </div>
+                <button onclick="closeModal('detail-modal')" class="btn-ghost p-1 shrink-0">
+                    <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <!-- Screenshot in detail view -->
+            <div id="detail-screenshot" class="hidden mt-3">
+                <img id="detail-screenshot-img" src="" alt="Screenshot" class="max-w-full max-h-64 rounded-lg border border-notion-border cursor-pointer" onclick="openLightbox(this.src)">
+            </div>
+            <div class="flex items-center gap-3 mt-3 text-xs text-notion-secondary detail-timestamps">
+                <span id="detail-created"></span>
+                <span id="detail-updated"></span>
+                <span id="detail-fixed"></span>
+            </div>
+        </div>
+
+        <!-- Status & Actions -->
+        <div class="p-4 border-b border-notion-border flex items-center gap-2">
+            <label class="text-xs text-notion-secondary font-medium">Status:</label>
+            <select id="detail-status" onchange="updateDetailStatus()" class="n-select text-sm"></select>
+            <div class="flex-1"></div>
+            <button onclick="editFromDetail()" class="btn-ghost text-xs flex items-center gap-1 text-notion-secondary">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                Edit
+            </button>
+            <button onclick="deleteCurrentItem()" class="btn-ghost text-xs text-red-500 hover:bg-red-50">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </button>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="p-5 border-b border-notion-border">
+            <h3 class="text-xs font-semibold text-notion-secondary uppercase tracking-wide mb-3">Comments</h3>
+            <div id="comments-list" class="space-y-2 mb-3"></div>
+            <div id="comment-img-preview" class="hidden mb-2" style="position:relative">
+                <img id="comment-img-thumb" src="" style="max-width:120px;max-height:80px;border-radius:6px;border:1px solid #e8e8e8">
+                <button onclick="removeCommentImage()" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#ef4444;color:#fff;border:none;font-size:11px;line-height:18px;text-align:center;cursor:pointer">&times;</button>
+            </div>
+            <div class="flex gap-2">
+                <input id="comment-input" type="text" class="n-input flex-1 text-sm" placeholder="Write a comment..." onkeydown="if(event.key==='Enter'&&!event.shiftKey)addComment()">
+                <input type="file" id="comment-file-input" accept="image/*" class="hidden" onchange="previewCommentImage(this)">
+                <button onclick="document.getElementById('comment-file-input').click()" class="btn-ghost p-1.5 border border-notion-border shrink-0" title="Attach image">
+                    <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                </button>
+                <button onclick="addComment()" class="btn-blue text-xs">Post</button>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="p-5">
+            <h3 class="text-xs font-semibold text-notion-secondary uppercase tracking-wide mb-3">History</h3>
+            <div id="history-list" class="space-y-2"></div>
+            <div id="no-history" class="text-xs text-notion-secondary">No changes recorded yet.</div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Settings Modal -->
+<div id="settings-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4">
+    <div class="modal-card p-6 w-full max-w-md fade-in">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-base font-semibold text-notion-text flex items-center gap-2">
+                <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                AI Settings
+            </h2>
+            <button onclick="closeModal('settings-modal')" class="btn-ghost p-1">
+                <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1">Anthropic API Key (shared)</label>
+                <div id="key-display" class="text-xs font-mono text-notion-secondary bg-notion-light border border-notion-border rounded px-3 py-2 mb-2" style="user-select:none;-webkit-user-select:none;letter-spacing:1px"></div>
+                <div class="key-input-wrap">
+                    <input id="ai-api-key" type="password" class="n-input" placeholder="Paste new key to update..." style="flex:1;font-family:monospace;font-size:13px;-webkit-text-security:disc" autocomplete="off" oncopy="return false" oncut="return false" ondragstart="return false">
+                    <button onclick="validateAndSaveKey()" class="btn-ghost px-3 py-1.5 border border-notion-border text-xs font-medium shrink-0">Update Key</button>
+                </div>
+                <div id="key-status" class="key-status hidden"></div>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-notion-secondary mb-1">AI Model</label>
+                <select id="ai-model" class="n-select w-full">
+                    <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast & Affordable)</option>
+                    <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5 (Most Capable)</option>
+                </select>
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="saveAISettings()" class="btn-blue flex-1">Save Settings</button>
+                <button onclick="closeModal('settings-modal')" class="btn-ghost border border-notion-border flex-1">Cancel</button>
+            </div>
+            <!-- Password Change Section -->
+            <div style="border-top:1px solid #e8e8e8;margin-top:16px;padding-top:16px">
+                <h3 class="text-xs font-semibold text-notion-secondary uppercase tracking-wide mb-3">Change Password</h3>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-notion-secondary mb-1">New Password</label>
+                        <input id="new-password" type="password" class="n-input" placeholder="Enter new password...">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-notion-secondary mb-1">Confirm New Password</label>
+                        <input id="confirm-password" type="password" class="n-input" placeholder="Confirm new password...">
+                    </div>
+                    <div id="pw-change-status" class="hidden text-xs p-2 rounded"></div>
+                    <button onclick="changePassword()" class="btn-blue w-full">Update Password</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Paste & Import Modal -->
+<div id="import-modal" class="hidden fixed inset-0 z-50 modal-overlay flex items-start justify-center p-4 pt-10 overflow-y-auto">
+    <div class="modal-card p-6 w-full max-w-2xl fade-in mb-12">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-base font-semibold text-notion-text flex items-center gap-2">
+                    <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Paste & Import
+                </h2>
+                <p class="text-xs text-notion-secondary mt-0.5">Paste your bugs & features — AI will parse, fix grammar, and categorize them</p>
+            </div>
+            <button onclick="closeModal('import-modal')" class="btn-ghost p-1 shrink-0">
+                <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <textarea id="import-text" class="n-input" rows="8" style="resize:vertical;font-size:13px" placeholder="Paste your text here...&#10;&#10;Examples:&#10;- WhatsApp web sending fails sometimes&#10;- need dark mode toggle in settings&#10;- login page crashes on mobile&#10;- add export to CSV feature"></textarea>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="parseWithAI()" id="parse-btn" class="btn-blue flex items-center gap-2 text-sm">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    Parse with AI
+                </button>
+                <span id="parse-status" class="text-xs text-notion-secondary hidden"></span>
+            </div>
+            <div id="import-preview" class="hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-xs font-semibold text-notion-secondary uppercase tracking-wide">Parsed Items</h3>
+                    <span id="parsed-count" class="text-xs text-notion-secondary"></span>
+                </div>
+                <div class="border border-notion-border rounded-lg overflow-hidden" style="max-height:350px;overflow-y:auto">
+                    <table class="parsed-items-table">
+                        <thead>
+                            <tr>
+                                <th style="width:30px"><input type="checkbox" class="n-check" id="import-select-all" checked onchange="toggleImportSelectAll(this.checked)"></th>
+                                <th>Title</th>
+                                <th style="width:70px">Type</th>
+                                <th style="width:90px">Category</th>
+                                <th style="width:75px">Priority</th>
+                            </tr>
+                        </thead>
+                        <tbody id="parsed-items-body"></tbody>
+                    </table>
+                </div>
+                <div class="flex items-center gap-3 mt-3">
+                    <button onclick="importParsedItems()" id="import-btn" class="btn-blue flex items-center gap-2 text-sm">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        Import Selected
+                    </button>
+                    <span id="import-status" class="text-xs text-notion-secondary hidden"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// Supabase Init
+// ============================================================
+const SUPABASE_URL = 'https://iavxwcotezvxrvkxceht.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlhdnh3Y290ZXp2eHJ2a3hjZWh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMjUzNjYsImV4cCI6MjA4NjkwMTM2Nn0.H3cwzFFmRsmGgrF8AxVFzBTXsKbiPzMZN_-jeJRvng8';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentItems = [];
+let currentDetailItem = null;
+let pendingScreenshotFile = null;
+let _cachedUserEmail = '';
+async function getCurrentUserEmail() {
+    if (_cachedUserEmail) return _cachedUserEmail;
+    const { data } = await sb.auth.getUser();
+    _cachedUserEmail = data?.user?.email || '';
+    return _cachedUserEmail;
+}
+let colSortField = null;
+let colSortDir = null; // 'asc' or 'desc'
+let selectedIds = new Set();
+let lastRenderedIds = []; // track visible item ids for select-all
+
+// ============================================================
+// Auth
+// ============================================================
+async function checkSession() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) showApp(session.user);
+}
+
+const SHORTHAND_USERS = {
+    'gj': { email: 'gj@tracker.local' },
+    'wz': { email: 'wz@tracker.local' }
+};
+
+async function handleLogin() {
+    const rawInput = document.getElementById('auth-email').value.trim();
+    let password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.classList.add('hidden');
+
+    // Map shorthand usernames to Supabase credentials
+    let email = rawInput;
+    if (SHORTHAND_USERS[rawInput]) {
+        email = SHORTHAND_USERS[rawInput].email;
+    }
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+    showApp(data.user);
+}
+
+async function handleSignup() {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.classList.add('hidden');
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+    if (data.user && !data.user.email_confirmed_at) {
+        errEl.textContent = 'Check your email to confirm, then sign in.';
+        errEl.classList.remove('hidden');
+        errEl.style.background = '#edf4fd'; errEl.style.color = '#1b6a9c'; errEl.style.borderColor = '#bdd8ee';
+        return;
+    }
+    showApp(data.user);
+}
+
+async function changePassword() {
+    const newPw = document.getElementById('new-password').value;
+    const confirmPw = document.getElementById('confirm-password').value;
+    const statusEl = document.getElementById('pw-change-status');
+    statusEl.classList.remove('hidden');
+
+    if (!newPw || !confirmPw) {
+        statusEl.textContent = 'Please fill in both fields.';
+        statusEl.style.background = '#ffe2dd'; statusEl.style.color = '#93000a';
+        return;
+    }
+    if (newPw !== confirmPw) {
+        statusEl.textContent = 'Passwords do not match.';
+        statusEl.style.background = '#ffe2dd'; statusEl.style.color = '#93000a';
+        return;
+    }
+    if (newPw.length < 6) {
+        statusEl.textContent = 'Password must be at least 6 characters.';
+        statusEl.style.background = '#ffe2dd'; statusEl.style.color = '#93000a';
+        return;
+    }
+
+    const { error } = await sb.auth.updateUser({ password: newPw });
+    if (error) {
+        statusEl.textContent = 'Error: ' + error.message;
+        statusEl.style.background = '#ffe2dd'; statusEl.style.color = '#93000a';
+        return;
+    }
+
+    statusEl.textContent = 'Password updated successfully!';
+    statusEl.style.background = '#dbeddb'; statusEl.style.color = '#1e6231';
+    document.getElementById('new-password').value = '';
+    document.getElementById('confirm-password').value = '';
+}
+
+async function handleLogout() {
+    await sb.auth.signOut();
+    document.getElementById('app-screen').classList.add('hidden');
+    document.getElementById('auth-screen').classList.remove('hidden');
+}
+
+function showApp(user) {
+    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('app-screen').classList.remove('hidden');
+    _cachedUserEmail = user.email || '';
+    const displayName = user.email.endsWith('@tracker.local') ? user.email.split('@')[0] : user.email;
+    document.getElementById('user-email').textContent = displayName;
+    loadItems();
+}
+
+// ============================================================
+// CRUD
+// ============================================================
+async function loadItems() {
+    const { data, error } = await sb.from('items').select('*').order('created_at', { ascending: false });
+    if (error) { showToast('Error loading items: ' + error.message, 'error'); return; }
+    currentItems = data || [];
+    applyFilters();
+}
+
+function applyFilters() {
+    let items = [...currentItems];
+    const typeF = document.getElementById('filter-type').value;
+    const statusF = document.getElementById('filter-status').value;
+    const catF = document.getElementById('filter-category').value;
+    const prioF = document.getElementById('filter-priority').value;
+    const sortVal = document.getElementById('sort-by').value;
+
+    const searchQ = (document.getElementById('search-input').value || '').trim().toLowerCase();
+
+    if (searchQ) items = items.filter(i =>
+        (i.title || '').toLowerCase().includes(searchQ) ||
+        (i.description || '').toLowerCase().includes(searchQ)
+    );
+    if (typeF) items = items.filter(i => i.type === typeF);
+    if (statusF) items = items.filter(i => i.status === statusF);
+    if (catF) items = items.filter(i => i.category === catF);
+    if (prioF) items = items.filter(i => i.priority === prioF);
+
+    // Determine sort: column header sort takes priority over dropdown
+    let sortField, sortDir;
+    if (colSortField) {
+        sortField = colSortField;
+        sortDir = colSortDir;
+    } else {
+        [sortField, sortDir] = sortVal.split('-');
+    }
+
+    const prioOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    const statusOrder = { open: 0, in_progress: 1, fixed: 2, done: 3, wontfix: 4 };
+    items.sort((a, b) => {
+        let av, bv;
+        if (sortField === 'priority') {
+            av = prioOrder[a.priority] ?? 99; bv = prioOrder[b.priority] ?? 99;
+        } else if (sortField === 'status') {
+            av = statusOrder[a.status] ?? 99; bv = statusOrder[b.status] ?? 99;
+        } else if (sortField === 'created_at' || sortField === 'updated_at') {
+            av = new Date(a[sortField] || 0).getTime(); bv = new Date(b[sortField] || 0).getTime();
+        } else {
+            av = (a[sortField] || '').toLowerCase(); bv = (b[sortField] || '').toLowerCase();
+            if (av < bv) return sortDir === 'asc' ? -1 : 1;
+            if (av > bv) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        }
+        return sortDir === 'asc' ? av - bv : bv - av;
+    });
+
+    renderItems(items);
+    updateSortArrows();
+}
+
+function renderItems(items) {
+    const tbody = document.getElementById('items-table');
+    const empty = document.getElementById('empty-state');
+    const cards = document.getElementById('cards-container');
+    const emptyMobile = document.getElementById('empty-state-mobile');
+    document.getElementById('item-count').textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+    lastRenderedIds = items.map(i => i.id);
+
+    if (items.length === 0) {
+        tbody.innerHTML = '';
+        cards.innerHTML = '';
+        empty.classList.remove('hidden');
+        emptyMobile.classList.remove('hidden');
+        updateBatchBar();
+        return;
+    }
+    empty.classList.add('hidden');
+    emptyMobile.classList.add('hidden');
+
+    // Desktop/Tablet table rows
+    tbody.innerHTML = items.map(item => {
+        const isDone = item.status === 'fixed' || item.status === 'done';
+        const isSel = selectedIds.has(item.id);
+        const thumbHtml = item.screenshot_url
+            ? `<img src="${esc(item.screenshot_url)}" class="thumb" onclick="event.stopPropagation(); openLightbox('${esc(item.screenshot_url)}')" alt="Screenshot">`
+            : '';
+        return `
+        <tr class="${isSel ? 'row-selected' : ''}" onclick="openDetail('${item.id}')">
+            <td>
+                <input type="checkbox" class="n-check" ${isSel ? 'checked' : ''}
+                    onclick="event.stopPropagation(); toggleSelect('${item.id}', this.checked)">
+            </td>
+            <td>${thumbHtml}</td>
+            <td class="${isDone ? 'line-through text-notion-secondary' : 'text-notion-text'} font-medium" title="${esc(item.description || '')}">${esc(item.title)}</td>
+            <td class="dropdown-cell" onclick="event.stopPropagation()">
+                <select class="badge type-${item.type}" style="border:none;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:14px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%23787774%22/></svg>');background-repeat:no-repeat;background-position:right 2px center;outline:none" onchange="inlineUpdate('${item.id}','type',this.value)" onfocus="this.dataset.prev=this.value">
+                    <option value="bug" ${item.type==='bug'?'selected':''}>bug</option>
+                    <option value="feature" ${item.type==='feature'?'selected':''}>feature</option>
+                </select>
+            </td>
+            <td class="dropdown-cell" onclick="event.stopPropagation()">
+                <select class="badge cat-badge" style="border:none;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:14px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%23787774%22/></svg>');background-repeat:no-repeat;background-position:right 2px center;outline:none" onchange="inlineUpdate('${item.id}','category',this.value)">
+                    <option value="critical" ${item.category==='critical'?'selected':''}>critical</option>
+                    <option value="ui" ${item.category==='ui'?'selected':''}>ui</option>
+                    <option value="workflow" ${item.category==='workflow'?'selected':''}>workflow</option>
+                    <option value="skill" ${item.category==='skill'?'selected':''}>skill</option>
+                    <option value="improvement" ${item.category==='improvement'?'selected':''}>improvement</option>
+                </select>
+            </td>
+            <td class="dropdown-cell" onclick="event.stopPropagation()">
+                <select class="badge priority-${item.priority}" style="border:none;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:14px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%23787774%22/></svg>');background-repeat:no-repeat;background-position:right 2px center;outline:none" onchange="inlineUpdate('${item.id}','priority',this.value)">
+                    <option value="critical" ${item.priority==='critical'?'selected':''}>critical</option>
+                    <option value="high" ${item.priority==='high'?'selected':''}>high</option>
+                    <option value="medium" ${item.priority==='medium'?'selected':''}>medium</option>
+                    <option value="low" ${item.priority==='low'?'selected':''}>low</option>
+                </select>
+            </td>
+            <td class="dropdown-cell" onclick="event.stopPropagation()">
+                <select class="badge status-${item.status}" style="border:none;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:14px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%23787774%22/></svg>');background-repeat:no-repeat;background-position:right 2px center;outline:none" onchange="inlineUpdate('${item.id}','status',this.value)">
+                    <option value="open" ${item.status==='open'?'selected':''}>Open</option>
+                    <option value="in_progress" ${item.status==='in_progress'?'selected':''}>In Progress</option>
+                    <option value="fixed" ${item.status==='fixed'?'selected':''}>Fixed</option>
+                    <option value="done" ${item.status==='done'?'selected':''}>Done</option>
+                    <option value="wontfix" ${item.status==='wontfix'?'selected':''}>Won't Fix</option>
+                </select>
+            </td>
+            <td class="text-xs text-notion-secondary">${fmtTime(item.created_at)}</td>
+            <td class="text-xs text-notion-secondary">${fmtTime(item.updated_at)}</td>
+        </tr>`;
+    }).join('');
+
+    // Mobile card view
+    const ddStyle = "border:none;cursor:pointer;appearance:none;-webkit-appearance:none;padding-right:14px;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%226%22><path d=%22M0 0l5 6 5-6z%22 fill=%22%23787774%22/></svg>');background-repeat:no-repeat;background-position:right 2px center;outline:none";
+    cards.innerHTML = items.map(item => {
+        const isDone = item.status === 'fixed' || item.status === 'done';
+        const isSel = selectedIds.has(item.id);
+        const thumbHtml = item.screenshot_url
+            ? `<img src="${esc(item.screenshot_url)}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;border:1px solid #e8e8e8;flex-shrink:0" onclick="event.stopPropagation(); openLightbox('${esc(item.screenshot_url)}')" alt="">`
+            : '';
+        return `
+        <div class="item-card ${isSel ? 'row-selected' : ''}" onclick="openDetail('${item.id}')" style="${isSel ? 'background:#edf4fd;border-color:#bdd4f7' : ''}">
+            <div style="display:flex;align-items:flex-start;gap:10px">
+                <input type="checkbox" class="n-check" style="margin-top:3px" ${isSel ? 'checked' : ''}
+                    onclick="event.stopPropagation(); toggleSelect('${item.id}', this.checked)">
+                ${thumbHtml}
+                <div style="flex:1;min-width:0">
+                    <div class="${isDone ? 'line-through text-notion-secondary' : 'text-notion-text'}" style="font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(item.title)}</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px" onclick="event.stopPropagation()">
+                        <select class="badge type-${item.type}" style="${ddStyle}" onchange="inlineUpdate('${item.id}','type',this.value)">
+                            <option value="bug" ${item.type==='bug'?'selected':''}>bug</option>
+                            <option value="feature" ${item.type==='feature'?'selected':''}>feature</option>
+                        </select>
+                        <select class="badge cat-badge" style="${ddStyle}" onchange="inlineUpdate('${item.id}','category',this.value)">
+                            <option value="critical" ${item.category==='critical'?'selected':''}>critical</option>
+                            <option value="ui" ${item.category==='ui'?'selected':''}>ui</option>
+                            <option value="workflow" ${item.category==='workflow'?'selected':''}>workflow</option>
+                            <option value="skill" ${item.category==='skill'?'selected':''}>skill</option>
+                            <option value="improvement" ${item.category==='improvement'?'selected':''}>improvement</option>
+                        </select>
+                        <select class="badge priority-${item.priority}" style="${ddStyle}" onchange="inlineUpdate('${item.id}','priority',this.value)">
+                            <option value="critical" ${item.priority==='critical'?'selected':''}>critical</option>
+                            <option value="high" ${item.priority==='high'?'selected':''}>high</option>
+                            <option value="medium" ${item.priority==='medium'?'selected':''}>medium</option>
+                            <option value="low" ${item.priority==='low'?'selected':''}>low</option>
+                        </select>
+                        <select class="badge status-${item.status}" style="${ddStyle}" onchange="inlineUpdate('${item.id}','status',this.value)">
+                            <option value="open" ${item.status==='open'?'selected':''}>Open</option>
+                            <option value="in_progress" ${item.status==='in_progress'?'selected':''}>In Progress</option>
+                            <option value="fixed" ${item.status==='fixed'?'selected':''}>Fixed</option>
+                            <option value="done" ${item.status==='done'?'selected':''}>Done</option>
+                            <option value="wontfix" ${item.status==='wontfix'?'selected':''}>Won't Fix</option>
+                        </select>
+                    </div>
+                    <div style="font-size:11px;color:#787774;margin-top:6px">${fmtTime(item.created_at)}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    updateBatchBar();
+}
+
+// ============================================================
+// Selection & Batch Actions
+// ============================================================
+function toggleSelect(id, checked) {
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    applyFilters();
+}
+
+function toggleSelectAll(checked) {
+    if (checked) lastRenderedIds.forEach(id => selectedIds.add(id));
+    else lastRenderedIds.forEach(id => selectedIds.delete(id));
+    applyFilters();
+}
+
+function clearSelection() {
+    selectedIds.clear();
+    document.getElementById('select-all-check').checked = false;
+    applyFilters();
+}
+
+function updateBatchBar() {
+    const bar = document.getElementById('batch-bar');
+    const count = selectedIds.size;
+    if (count === 0) {
+        bar.classList.add('hidden');
+    } else {
+        bar.classList.remove('hidden');
+        document.getElementById('batch-count-num').textContent = count;
+    }
+    // Sync select-all checkbox
+    const allCheck = document.getElementById('select-all-check');
+    if (lastRenderedIds.length > 0 && lastRenderedIds.every(id => selectedIds.has(id))) {
+        allCheck.checked = true;
+    } else {
+        allCheck.checked = false;
+    }
+}
+
+async function batchUpdate(field, value) {
+    if (!value || selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    const { error } = await sb.from('items').update({ [field]: value }).in('id', ids);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+    // Record history for each item
+    const ue = await getCurrentUserEmail();
+    const historyRecords = [];
+    ids.forEach(id => {
+        const item = currentItems.find(i => i.id === id);
+        if (item && item[field] !== value) {
+            historyRecords.push({ item_id: id, field_changed: field, old_value: item[field] || '', new_value: value, user_email: ue });
+        }
+    });
+    if (historyRecords.length > 0) await sb.from('history').insert(historyRecords);
+
+    showToast(`Updated ${field} to "${value}" for ${ids.length} item(s)`);
+    await loadItems();
+}
+
+async function inlineUpdate(id, field, value) {
+    const item = currentItems.find(i => i.id === id);
+    if (!item || item[field] === value) return;
+    const oldValue = item[field];
+    const { error } = await sb.from('items').update({ [field]: value }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    await sb.from('history').insert([{ item_id: id, field_changed: field, old_value: oldValue || '', new_value: value, user_email: await getCurrentUserEmail() }]);
+    showToast(`Updated ${field} to "${value}"`);
+    await loadItems();
+}
+
+async function batchDelete() {
+    const count = selectedIds.size;
+    if (count === 0) return;
+    if (!confirm(`Delete ${count} selected item(s)? This cannot be undone.`)) return;
+    const ids = [...selectedIds];
+    const { error } = await sb.from('items').delete().in('id', ids);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast(`Deleted ${count} item(s)`);
+    selectedIds.clear();
+    document.getElementById('select-all-check').checked = false;
+    await loadItems();
+}
+
+// ============================================================
+// Screenshot Upload
+// ============================================================
+function handleFileSelect(input) {
+    if (input.files && input.files[0]) {
+        pendingScreenshotFile = input.files[0];
+        showPreview(input.files[0]);
+    }
+}
+
+function handleFileDrop(event) {
+    const files = event.dataTransfer.files;
+    if (files && files[0] && files[0].type.startsWith('image/')) {
+        pendingScreenshotFile = files[0];
+        showPreview(files[0]);
+    }
+}
+
+function showPreview(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('preview-img').src = e.target.result;
+        document.getElementById('screenshot-preview').classList.remove('hidden');
+        document.getElementById('upload-area').classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeScreenshot() {
+    pendingScreenshotFile = null;
+    document.getElementById('screenshot-preview').classList.add('hidden');
+    document.getElementById('upload-area').classList.remove('hidden');
+    document.getElementById('file-input').value = '';
+    // Mark for removal on save
+    document.getElementById('screenshot-preview').dataset.remove = 'true';
+}
+
+async function uploadScreenshot(file, itemId) {
+    const ext = file.name.split('.').pop();
+    const path = `${itemId}.${ext}`;
+    const { error } = await sb.storage.from('screenshots').upload(path, file, { upsert: true });
+    if (error) { showToast('Upload error: ' + error.message, 'error'); return null; }
+    const { data } = sb.storage.from('screenshots').getPublicUrl(path);
+    return data.publicUrl + '?t=' + Date.now();
+}
+
+// ============================================================
+// Add/Edit Modal
+// ============================================================
+function openAddModal() {
+    document.getElementById('modal-title').textContent = 'New Item';
+    document.getElementById('edit-item-id').value = '';
+    document.getElementById('item-type').value = 'bug';
+    document.getElementById('item-category').value = 'critical';
+    document.getElementById('item-title-input').value = '';
+    document.getElementById('item-description').value = '';
+    document.getElementById('item-priority').value = 'medium';
+    document.getElementById('item-status').value = 'open';
+    document.getElementById('status-field').classList.add('hidden');
+    pendingScreenshotFile = null;
+    document.getElementById('screenshot-preview').classList.add('hidden');
+    document.getElementById('screenshot-preview').dataset.remove = '';
+    document.getElementById('upload-area').classList.remove('hidden');
+    document.getElementById('file-input').value = '';
+    document.getElementById('item-modal').classList.remove('hidden');
+    document.getElementById('item-title-input').focus();
+}
+
+function openEditModal(item) {
+    document.getElementById('modal-title').textContent = 'Edit Item';
+    document.getElementById('edit-item-id').value = item.id;
+    document.getElementById('item-type').value = item.type;
+    document.getElementById('item-category').value = item.category;
+    document.getElementById('item-title-input').value = item.title;
+    document.getElementById('item-description').value = item.description || '';
+    document.getElementById('item-priority').value = item.priority;
+    document.getElementById('item-status').value = item.status;
+    document.getElementById('status-field').classList.remove('hidden');
+    pendingScreenshotFile = null;
+    document.getElementById('screenshot-preview').dataset.remove = '';
+    if (item.screenshot_url) {
+        document.getElementById('preview-img').src = item.screenshot_url;
+        document.getElementById('screenshot-preview').classList.remove('hidden');
+        document.getElementById('upload-area').classList.add('hidden');
+    } else {
+        document.getElementById('screenshot-preview').classList.add('hidden');
+        document.getElementById('upload-area').classList.remove('hidden');
+    }
+    document.getElementById('file-input').value = '';
+    document.getElementById('item-modal').classList.remove('hidden');
+}
+
+async function saveItem() {
+    const id = document.getElementById('edit-item-id').value;
+    const payload = {
+        type: document.getElementById('item-type').value,
+        category: document.getElementById('item-category').value,
+        title: document.getElementById('item-title-input').value.trim(),
+        description: document.getElementById('item-description').value.trim(),
+        priority: document.getElementById('item-priority').value,
+        status: document.getElementById('item-status').value,
+    };
+
+    if (!payload.title) { showToast('Title is required', 'error'); return; }
+
+    if (id) {
+        const oldItem = currentItems.find(i => i.id === id);
+        const ue = await getCurrentUserEmail();
+        const changes = [];
+        for (const key of ['title', 'description', 'type', 'category', 'priority', 'status']) {
+            if (oldItem[key] !== payload[key]) {
+                changes.push({ item_id: id, field_changed: key, old_value: oldItem[key] || '', new_value: payload[key], user_email: ue });
+            }
+        }
+
+        // Handle screenshot
+        if (pendingScreenshotFile) {
+            const url = await uploadScreenshot(pendingScreenshotFile, id);
+            if (url) payload.screenshot_url = url;
+        } else if (document.getElementById('screenshot-preview').dataset.remove === 'true') {
+            payload.screenshot_url = null;
+        }
+
+        const { error } = await sb.from('items').update(payload).eq('id', id);
+        if (error) { showToast('Error: ' + error.message, 'error'); return; }
+        if (changes.length > 0) await sb.from('history').insert(changes);
+        showToast('Item updated');
+    } else {
+        const { data: inserted, error } = await sb.from('items').insert([payload]).select();
+        if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+        // Upload screenshot for new item
+        if (pendingScreenshotFile && inserted && inserted[0]) {
+            const url = await uploadScreenshot(pendingScreenshotFile, inserted[0].id);
+            if (url) {
+                await sb.from('items').update({ screenshot_url: url }).eq('id', inserted[0].id);
+            }
+        }
+        // Add "created" history entry
+        if (inserted && inserted[0]) {
+            const ue = await getCurrentUserEmail();
+            await sb.from('history').insert([{ item_id: inserted[0].id, field_changed: 'created', old_value: '', new_value: payload.title || 'New item', changed_at: new Date().toISOString(), user_email: ue }]);
+        }
+        showToast('Item created');
+    }
+
+    closeModal('item-modal');
+    await loadItems();
+    if (currentDetailItem && id) openDetail(id);
+}
+
+// ============================================================
+// Detail Modal
+// ============================================================
+async function openDetail(id) {
+    const item = currentItems.find(i => i.id === id);
+    if (!item) return;
+    currentDetailItem = item;
+
+    document.getElementById('detail-type').textContent = item.type;
+    document.getElementById('detail-type').className = `badge type-${item.type}`;
+    document.getElementById('detail-category').textContent = item.category;
+    document.getElementById('detail-priority').textContent = item.priority;
+    document.getElementById('detail-priority').className = `badge priority-${item.priority}`;
+    document.getElementById('detail-title').textContent = item.title;
+    document.getElementById('detail-description').textContent = item.description || 'No description.';
+
+    // Screenshot
+    const ssEl = document.getElementById('detail-screenshot');
+    if (item.screenshot_url) {
+        document.getElementById('detail-screenshot-img').src = item.screenshot_url;
+        ssEl.classList.remove('hidden');
+    } else {
+        ssEl.classList.add('hidden');
+    }
+
+    document.getElementById('detail-created').textContent = 'Created ' + fmtTime(item.created_at);
+    document.getElementById('detail-updated').textContent = 'Updated ' + fmtTime(item.updated_at);
+    document.getElementById('detail-fixed').textContent = item.fixed_at ? 'Fixed ' + fmtTime(item.fixed_at) : '';
+
+    const sel = document.getElementById('detail-status');
+    sel.innerHTML = ['open','in_progress','fixed','done','wontfix'].map(s =>
+        `<option value="${s}" ${s === item.status ? 'selected' : ''}>${formatStatus(s)}</option>`
+    ).join('');
+
+    await loadComments(id);
+    await loadHistory(id);
+    document.getElementById('detail-modal').classList.remove('hidden');
+}
+
+async function updateDetailStatus() {
+    if (!currentDetailItem) return;
+    const newStatus = document.getElementById('detail-status').value;
+    const oldStatus = currentDetailItem.status;
+    if (newStatus === oldStatus) return;
+
+    const { error } = await sb.from('items').update({ status: newStatus }).eq('id', currentDetailItem.id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+    await sb.from('history').insert([{
+        item_id: currentDetailItem.id, field_changed: 'status',
+        old_value: oldStatus, new_value: newStatus,
+        user_email: await getCurrentUserEmail()
+    }]);
+
+    showToast('Status updated to ' + formatStatus(newStatus));
+    await loadItems();
+    openDetail(currentDetailItem.id);
+}
+
+function editFromDetail() {
+    if (!currentDetailItem) return;
+    closeModal('detail-modal');
+    openEditModal(currentDetailItem);
+}
+
+async function deleteCurrentItem() {
+    if (!currentDetailItem) return;
+    if (!confirm('Delete this item? This cannot be undone.')) return;
+    const { error } = await sb.from('items').delete().eq('id', currentDetailItem.id);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Item deleted');
+    closeModal('detail-modal');
+    currentDetailItem = null;
+    await loadItems();
+}
+
+// ============================================================
+// Comments
+// ============================================================
+function commentUserLabel(email) {
+    if (!email) return 'Anonymous';
+    if (email.endsWith('@tracker.local')) return email.split('@')[0];
+    return email;
+}
+
+async function loadComments(itemId) {
+    const { data } = await sb.from('comments').select('*').eq('item_id', itemId).order('created_at', { ascending: true });
+    const list = document.getElementById('comments-list');
+    if (!data || data.length === 0) {
+        list.innerHTML = '<p class="text-xs text-notion-secondary">No comments yet.</p>';
+        return;
+    }
+    list.innerHTML = data.map(c => {
+        const user = commentUserLabel(c.user_email);
+        const imgHtml = c.image_url ? `<img src="${esc(c.image_url)}" style="max-width:240px;max-height:160px;border-radius:6px;border:1px solid #e8e8e8;margin-top:6px;cursor:pointer" onclick="openLightbox('${esc(c.image_url)}')">` : '';
+        const contentHtml = c.content ? `<p class="text-sm text-notion-text">${esc(c.content)}</p>` : '';
+        return `<div class="bg-notion-light rounded p-3">
+            <div class="flex items-center gap-2 mb-1">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:#e8deee;color:#6940a5;font-size:10px;font-weight:600">${user.charAt(0).toUpperCase()}</span>
+                <span class="text-xs font-medium text-notion-text">${esc(user)}</span>
+                <span class="text-[11px] text-notion-secondary">${fmtTime(c.created_at)}</span>
+            </div>
+            ${contentHtml}${imgHtml}
+        </div>`;
+    }).join('');
+}
+
+let pendingCommentFile = null;
+
+function previewCommentImage(input) {
+    if (!input.files || !input.files[0]) return;
+    pendingCommentFile = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('comment-img-thumb').src = e.target.result;
+        document.getElementById('comment-img-preview').classList.remove('hidden');
+    };
+    reader.readAsDataURL(pendingCommentFile);
+}
+
+function removeCommentImage() {
+    pendingCommentFile = null;
+    document.getElementById('comment-img-preview').classList.add('hidden');
+    document.getElementById('comment-file-input').value = '';
+}
+
+async function uploadCommentImage(file, itemId) {
+    const ext = file.name.split('.').pop();
+    const path = `${itemId}/${Date.now()}.${ext}`;
+    const { error } = await sb.storage.from('comment-images').upload(path, file);
+    if (error) { showToast('Image upload error: ' + error.message, 'error'); return null; }
+    const { data } = sb.storage.from('comment-images').getPublicUrl(path);
+    return data.publicUrl;
+}
+
+async function addComment() {
+    if (!currentDetailItem) return;
+    const input = document.getElementById('comment-input');
+    const content = input.value.trim();
+    if (!content && !pendingCommentFile) return;
+
+    let imageUrl = '';
+    if (pendingCommentFile) {
+        imageUrl = await uploadCommentImage(pendingCommentFile, currentDetailItem.id);
+        if (imageUrl === null) return;
+    }
+
+    const user = (await sb.auth.getUser()).data.user;
+    const userEmail = user?.email || '';
+
+    const { error } = await sb.from('comments').insert([{
+        item_id: currentDetailItem.id,
+        content: content,
+        user_email: userEmail,
+        image_url: imageUrl
+    }]);
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    input.value = '';
+    removeCommentImage();
+    await loadComments(currentDetailItem.id);
+}
+
+// ============================================================
+// History
+// ============================================================
+async function loadHistory(itemId) {
+    const { data } = await sb.from('history').select('*').eq('item_id', itemId).order('changed_at', { ascending: false });
+    const list = document.getElementById('history-list');
+    const noH = document.getElementById('no-history');
+
+    if (!data || data.length === 0) { list.innerHTML = ''; noH.classList.remove('hidden'); return; }
+    noH.classList.add('hidden');
+    list.innerHTML = data.map(h => {
+        const user = commentUserLabel(h.user_email);
+        if (h.field_changed === 'created') {
+            return `<div class="flex items-start gap-2 text-xs">
+                <svg class="w-3.5 h-3.5 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                <div>
+                    <span class="text-notion-text"><strong class="text-indigo-600">${esc(user)}</strong> created this item</span>
+                    <p class="text-[11px] text-notion-secondary">${fmtTime(h.changed_at)}</p>
+                </div>
+            </div>`;
+        }
+        return `<div class="flex items-start gap-2 text-xs">
+            <svg class="w-3.5 h-3.5 text-notion-secondary mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <div>
+                <span class="text-notion-text"><strong class="text-indigo-600">${esc(user)}</strong> changed <strong>${esc(h.field_changed)}</strong> from <span class="text-red-500">${esc(h.old_value || '(empty)')}</span> to <span class="text-green-600">${esc(h.new_value)}</span></span>
+                <p class="text-[11px] text-notion-secondary">${fmtTime(h.changed_at)}</p>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ============================================================
+// Lightbox
+// ============================================================
+function openLightbox(src) {
+    document.getElementById('lightbox-img').src = src;
+    document.getElementById('lightbox').classList.remove('hidden');
+}
+
+function closeLightbox() {
+    document.getElementById('lightbox').classList.add('hidden');
+}
+
+// ============================================================
+// Utilities
+// ============================================================
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function formatStatus(s) { return { open:'Open', in_progress:'In Progress', fixed:'Fixed', done:'Done', wontfix:"Won't Fix" }[s] || s; }
+
+function fmtTime(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mon = months[d.getMonth()];
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    return `${dd}-${mon}-${yyyy}/${hh}:${mm}:${ss}`;
+}
+
+function esc(str) {
+    if (!str) return '';
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+function showToast(msg, type = 'success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast px-4 py-2.5 rounded text-sm font-medium shadow-lg ${type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-notion-text text-white'}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+// ============================================================
+// AI Settings (localStorage)
+// ============================================================
+let parsedImportItems = [];
+
+// Fetch API key from Supabase settings table
+async function getApiKeyFromDB() {
+    const { data, error } = await sb.from('settings').select('setting_value').eq('setting_key', 'api_key').maybeSingle();
+    if (error || !data) return '';
+    return data.setting_value;
+}
+
+// Mask the API key for display (e.g., sk-ant-...xY3z)
+function maskApiKey(key) {
+    if (!key) return 'No key configured';
+    if (key.length <= 12) return '*'.repeat(key.length);
+    return key.substring(0, 7) + '...' + key.substring(key.length - 4);
+}
+
+async function loadAISettings() {
+    const apiKey = await getApiKeyFromDB();
+    return {
+        apiKey,
+        model: localStorage.getItem('ai_model') || 'claude-haiku-4-5-20251001'
+    };
+}
+
+async function openSettings() {
+    const settings = await loadAISettings();
+    document.getElementById('ai-api-key').value = '';
+    document.getElementById('ai-model').value = settings.model;
+    document.getElementById('key-display').textContent = maskApiKey(settings.apiKey);
+    document.getElementById('key-status').classList.add('hidden');
+    document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+async function validateAndSaveKey() {
+    const key = document.getElementById('ai-api-key').value.trim();
+    const statusEl = document.getElementById('key-status');
+    if (!key) {
+        statusEl.textContent = 'Please paste a new API key';
+        statusEl.className = 'key-status invalid';
+        statusEl.classList.remove('hidden');
+        return;
+    }
+    statusEl.textContent = 'Validating...';
+    statusEl.className = 'key-status checking';
+    statusEl.classList.remove('hidden');
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': key,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+                model: 'claude-haiku-4-5-20251001',
+                max_tokens: 10,
+                messages: [{ role: 'user', content: 'Hi' }]
+            })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            statusEl.textContent = 'Invalid key: ' + (err.error?.message || res.statusText);
+            statusEl.className = 'key-status invalid';
+            return;
+        }
+    } catch (e) {
+        statusEl.textContent = 'Connection error: ' + e.message;
+        statusEl.className = 'key-status invalid';
+        return;
+    }
+    // Key is valid — save to Supabase
+    const user = (await sb.auth.getUser()).data.user;
+    const updatedBy = user?.email || '';
+    const { error } = await sb.from('settings').upsert({
+        setting_key: 'api_key',
+        setting_value: key,
+        updated_at: new Date().toISOString(),
+        updated_by: updatedBy
+    }, { onConflict: 'setting_key' });
+    if (error) {
+        statusEl.textContent = 'Save failed: ' + error.message;
+        statusEl.className = 'key-status invalid';
+        return;
+    }
+    statusEl.textContent = 'Key validated & saved!';
+    statusEl.className = 'key-status valid';
+    document.getElementById('ai-api-key').value = '';
+    document.getElementById('key-display').textContent = maskApiKey(key);
+    // Remove any old localStorage key
+    localStorage.removeItem('ai_api_key');
+}
+
+async function saveAISettings() {
+    const model = document.getElementById('ai-model').value;
+    localStorage.setItem('ai_model', model);
+    showToast('AI settings saved');
+    closeModal('settings-modal');
+}
+
+// ============================================================
+// Paste & Import
+// ============================================================
+async function openImportModal() {
+    const settings = await loadAISettings();
+    if (!settings.apiKey) {
+        showToast('Please configure your AI API key in Settings first', 'error');
+        openSettings();
+        return;
+    }
+    document.getElementById('import-text').value = '';
+    document.getElementById('import-preview').classList.add('hidden');
+    document.getElementById('parse-status').classList.add('hidden');
+    parsedImportItems = [];
+    document.getElementById('import-modal').classList.remove('hidden');
+    document.getElementById('import-text').focus();
+}
+
+async function parseWithAI() {
+    const text = document.getElementById('import-text').value.trim();
+    if (!text) { showToast('Please paste some text first', 'error'); return; }
+
+    const settings = await loadAISettings();
+    if (!settings.apiKey) { showToast('API key not configured', 'error'); openSettings(); return; }
+
+    const parseBtn = document.getElementById('parse-btn');
+    const statusEl = document.getElementById('parse-status');
+    parseBtn.disabled = true;
+    parseBtn.innerHTML = '<span class="import-spinner"></span> Parsing...';
+    statusEl.textContent = 'Sending to AI...';
+    statusEl.className = 'text-xs text-notion-secondary';
+    statusEl.classList.remove('hidden');
+
+    const systemPrompt = `You are a bug/feature tracker parser. Parse the user's text into individual tracking items.
+
+For each item:
+1. Determine type: "bug" or "feature"
+2. Assign category: one of "critical", "ui", "workflow", "skill", "improvement"
+3. Assign priority: one of "critical", "high", "medium", "low"
+4. Create a clear, concise, grammar-corrected title
+5. Write a brief description (1-2 sentences)
+
+Rules:
+- Fix any grammar, spelling, or formatting issues in titles and descriptions
+- If something describes a broken/failing functionality → bug
+- If something describes a new capability or enhancement → feature
+- Crashes, data loss, security issues → critical priority
+- Broken core features → high priority
+- Minor issues, cosmetic → medium or low priority
+- Status is always "open"
+
+Return ONLY valid JSON — an array of objects with these exact fields:
+[{"type":"bug","category":"critical","title":"...","description":"...","priority":"high","status":"open"}]
+
+No markdown, no explanation, no code fences — just the raw JSON array.`;
+
+    try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': settings.apiKey,
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+                model: settings.model,
+                max_tokens: 4096,
+                system: systemPrompt,
+                messages: [{ role: 'user', content: text }]
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.error?.message || res.statusText);
+        }
+
+        const data = await res.json();
+        const content = data.content[0].text;
+
+        // Extract JSON from response (handle possible markdown wrapping)
+        let jsonStr = content;
+        const jsonMatch = content.match(/\[[\s\S]*\]/);
+        if (jsonMatch) jsonStr = jsonMatch[0];
+
+        parsedImportItems = JSON.parse(jsonStr);
+
+        // Validate and normalize
+        const validTypes = ['bug', 'feature'];
+        const validCategories = ['critical', 'ui', 'workflow', 'skill', 'improvement'];
+        const validPriorities = ['critical', 'high', 'medium', 'low'];
+
+        parsedImportItems = parsedImportItems.map(item => ({
+            type: validTypes.includes(item.type) ? item.type : 'bug',
+            category: validCategories.includes(item.category) ? item.category : 'improvement',
+            title: item.title || 'Untitled',
+            description: item.description || '',
+            priority: validPriorities.includes(item.priority) ? item.priority : 'medium',
+            status: 'open',
+            _selected: true
+        }));
+
+        renderParsedItems();
+        statusEl.textContent = `Parsed ${parsedImportItems.length} item(s)`;
+        statusEl.className = 'text-xs text-notion-secondary';
+    } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+        statusEl.className = 'text-xs text-red-500';
+        showToast('Parse error: ' + e.message, 'error');
+    } finally {
+        parseBtn.disabled = false;
+        parseBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Parse with AI';
+    }
+}
+
+function renderParsedItems() {
+    const preview = document.getElementById('import-preview');
+    const tbody = document.getElementById('parsed-items-body');
+    const countEl = document.getElementById('parsed-count');
+
+    if (parsedImportItems.length === 0) {
+        preview.classList.add('hidden');
+        return;
+    }
+
+    preview.classList.remove('hidden');
+    countEl.textContent = `${parsedImportItems.length} items`;
+    document.getElementById('import-select-all').checked = true;
+
+    tbody.innerHTML = parsedImportItems.map((item, idx) => `
+        <tr>
+            <td><input type="checkbox" class="n-check" ${item._selected ? 'checked' : ''} onchange="parsedImportItems[${idx}]._selected=this.checked"></td>
+            <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.description)}">${esc(item.title)}</td>
+            <td><span class="badge type-${item.type}">${item.type}</span></td>
+            <td><span class="badge cat-badge">${item.category}</span></td>
+            <td><span class="badge priority-${item.priority}">${item.priority}</span></td>
+        </tr>
+    `).join('');
+}
+
+function toggleImportSelectAll(checked) {
+    parsedImportItems.forEach(item => item._selected = checked);
+    renderParsedItems();
+    document.getElementById('import-select-all').checked = checked;
+}
+
+async function importParsedItems() {
+    const selected = parsedImportItems.filter(item => item._selected);
+    if (selected.length === 0) { showToast('No items selected', 'error'); return; }
+
+    const importBtn = document.getElementById('import-btn');
+    const statusEl = document.getElementById('import-status');
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<span class="import-spinner"></span> Importing...';
+    statusEl.classList.remove('hidden');
+    statusEl.textContent = `Importing ${selected.length} item(s)...`;
+
+    // Strip _selected flag before inserting
+    const records = selected.map(({ _selected, ...rest }) => rest);
+
+    try {
+        const { data, error } = await sb.from('items').insert(records).select();
+        if (error) throw new Error(error.message);
+
+        // Add "created" history entries for imported items
+        if (data && data.length > 0) {
+            const ue = await getCurrentUserEmail();
+            const historyEntries = data.map(item => ({ item_id: item.id, field_changed: 'created', old_value: '', new_value: item.title || 'Imported item', changed_at: new Date().toISOString(), user_email: ue }));
+            await sb.from('history').insert(historyEntries);
+        }
+
+        showToast(`Imported ${data.length} item(s) successfully`);
+        closeModal('import-modal');
+        parsedImportItems = [];
+        await loadItems();
+    } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+        showToast('Import error: ' + e.message, 'error');
+    } finally {
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Import Selected';
+    }
+}
+
+// Event listeners
+document.getElementById('item-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('item-modal'); });
+document.getElementById('detail-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('detail-modal'); });
+document.getElementById('settings-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('settings-modal'); });
+document.getElementById('import-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('import-modal'); });
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        if (!document.getElementById('lightbox').classList.contains('hidden')) closeLightbox();
+        else if (!document.getElementById('import-modal').classList.contains('hidden')) closeModal('import-modal');
+        else if (!document.getElementById('settings-modal').classList.contains('hidden')) closeModal('settings-modal');
+        else if (!document.getElementById('detail-modal').classList.contains('hidden')) closeModal('detail-modal');
+        else if (!document.getElementById('item-modal').classList.contains('hidden')) closeModal('item-modal');
+    }
+});
+
+// ============================================================
+// Column Sort (click header)
+// ============================================================
+function colSort(th) {
+    // Ignore if click was on the resize handle
+    if (event && event.target.classList.contains('col-resize')) return;
+    const field = th.dataset.sort;
+    if (colSortField === field) {
+        colSortDir = colSortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        colSortField = field;
+        colSortDir = 'asc';
+    }
+    // Reset dropdown to avoid confusion
+    document.getElementById('sort-by').value = 'created_at-desc';
+    applyFilters();
+}
+
+function updateSortArrows() {
+    document.querySelectorAll('.items-table th.sortable').forEach(th => {
+        const arrow = th.querySelector('.sort-arrow');
+        const field = th.dataset.sort;
+        if (colSortField === field) {
+            arrow.textContent = colSortDir === 'asc' ? '\u25B2' : '\u25BC';
+            arrow.classList.add('active');
+        } else {
+            arrow.textContent = '';
+            arrow.classList.remove('active');
+        }
+    });
+}
+
+// ============================================================
+// Column Resize + Double-Click Auto-Fit
+// ============================================================
+(function() {
+    let resizing = null;
+
+    // Drag to resize
+    document.addEventListener('mousedown', e => {
+        if (!e.target.classList.contains('col-resize')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const colIdx = parseInt(e.target.dataset.col);
+        const table = document.getElementById('main-table');
+        const col = table.querySelectorAll('colgroup col')[colIdx];
+        const startX = e.clientX;
+        const startW = col.offsetWidth || parseInt(getComputedStyle(col).width) || table.querySelectorAll('thead th')[colIdx].offsetWidth;
+        e.target.classList.add('active');
+        resizing = { col, startX, startW, handle: e.target };
+    });
+    document.addEventListener('mousemove', e => {
+        if (!resizing) return;
+        const newW = Math.max(40, resizing.startW + (e.clientX - resizing.startX));
+        resizing.col.style.width = newW + 'px';
+    });
+    document.addEventListener('mouseup', () => {
+        if (resizing) { resizing.handle.classList.remove('active'); resizing = null; }
+    });
+
+    // Double-click to auto-fit
+    document.addEventListener('dblclick', e => {
+        if (!e.target.classList.contains('col-resize')) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const colIdx = parseInt(e.target.dataset.col);
+        const table = document.getElementById('main-table');
+        const col = table.querySelectorAll('colgroup col')[colIdx];
+        const rows = table.querySelectorAll('tbody tr');
+        const th = table.querySelectorAll('thead th')[colIdx];
+
+        // Measure the widest content in this column
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const style = getComputedStyle(th);
+        ctx.font = style.font || '14px Inter, system-ui, sans-serif';
+
+        // Measure header text
+        const headerSpan = th.querySelector('span');
+        let maxW = headerSpan ? ctx.measureText(headerSpan.textContent).width : 0;
+        maxW += 30; // padding + sort arrow
+
+        // Measure each row cell
+        ctx.font = '14px Inter, system-ui, sans-serif';
+        rows.forEach(row => {
+            const cell = row.children[colIdx];
+            if (cell) {
+                const text = cell.textContent.trim();
+                const w = ctx.measureText(text).width + 24; // padding
+                if (w > maxW) maxW = w;
+            }
+        });
+
+        col.style.width = Math.ceil(maxW) + 'px';
+    });
+})();
+
+// Init
+checkSession();
+</script>
+</body>
+</html>
