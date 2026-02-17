@@ -225,8 +225,10 @@
             #table-wrapper { display: none !important; }
             #cards-container { display: flex !important; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 16px; }
 
-            .app-header-inner { flex-direction: column; align-items: flex-start !important; gap: 6px; }
-            .app-header-right { width: 100%; justify-content: space-between; }
+            .app-header-inner { flex-direction: row; flex-wrap: nowrap; align-items: center !important; gap: 6px; }
+            .app-header-inner > div:first-child { flex: 1; min-width: 0; }
+            .app-header-inner > div:first-child h1 { font-size: 13px; }
+            .app-header-right { flex-shrink: 0; gap: 4px !important; }
             .app-content { padding-left: 16px !important; padding-right: 16px !important; padding-top: 12px !important; padding-bottom: 0 !important; }
 
             .toolbar { flex-direction: column; align-items: stretch !important; gap: 8px !important; flex-shrink: 0; }
@@ -314,7 +316,7 @@
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
                     New
                 </button>
-                <button onclick="openImportModal()" class="btn-ghost border border-notion-border flex items-center gap-1.5 text-sm">
+                <button onclick="openImportModal()" class="flex items-center gap-1.5 text-sm" style="background:#16a34a;color:#fff;padding:6px 12px;border-radius:4px;font-size:13px;cursor:pointer;border:none">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
                     AI Import
                 </button>
