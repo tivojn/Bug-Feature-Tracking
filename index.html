@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bug & Feature Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -214,25 +214,34 @@
             .items-table td:nth-child(5) { display: none; }
         }
 
-        /* Mobile: switch to card layout */
+        /* Mobile: switch to card layout, fixed full-screen */
         @media (max-width: 560px) {
+            html, body { height: 100%; overflow: hidden; position: fixed; width: 100%; }
+
+            #app-screen { display: flex !important; flex-direction: column; height: 100vh; height: 100dvh; min-height: 0 !important; overflow: hidden; }
+            #app-screen > header { flex-shrink: 0; }
+            #app-screen > .app-content { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+
             #table-wrapper { display: none !important; }
-            #cards-container { display: flex !important; flex-direction: column; gap: 8px; }
+            #cards-container { display: flex !important; flex-direction: column; gap: 8px; flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; padding-bottom: 16px; }
 
             .app-header-inner { flex-direction: column; align-items: flex-start !important; gap: 6px; }
             .app-header-right { width: 100%; justify-content: space-between; }
-            .app-content { padding-left: 16px !important; padding-right: 16px !important; }
+            .app-content { padding-left: 16px !important; padding-right: 16px !important; padding-top: 12px !important; padding-bottom: 0 !important; }
 
-            .toolbar { flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+            .toolbar { flex-direction: column; align-items: stretch !important; gap: 8px !important; flex-shrink: 0; }
             .toolbar-filters { flex-wrap: wrap; gap: 6px !important; }
             .toolbar-filters .n-select { flex: 1; min-width: 0; font-size: 12px; padding: 5px 6px; }
             .search-wrap input { width: 100% !important; }
             .search-wrap { width: 100%; }
 
-            .modal-card { border-radius: 0; max-height: 100vh; }
+            #batch-bar { flex-shrink: 0; }
+            #empty-state-mobile { flex-shrink: 0; }
+
+            .modal-card { border-radius: 0; max-height: 100vh; max-height: 100dvh; }
             #item-modal > div { max-width: 100%; margin: 0; border-radius: 12px 12px 0 0; align-self: flex-end; }
             #detail-modal { padding: 0 !important; padding-top: 0 !important; }
-            #detail-modal > div { max-width: 100%; border-radius: 0; margin-bottom: 0; min-height: 100vh; }
+            #detail-modal > div { max-width: 100%; border-radius: 0; margin-bottom: 0; min-height: 100vh; min-height: 100dvh; }
 
             .detail-timestamps { flex-direction: column; gap: 2px !important; }
             .batch-bar { font-size: 12px; gap: 6px; }
