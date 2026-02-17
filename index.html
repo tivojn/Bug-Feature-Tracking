@@ -73,6 +73,7 @@
         /* Notion-style buttons */
         .btn-blue { background: #2383e2; color: #fff; padding: 6px 14px; border-radius: 4px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: background 0.15s; }
         .btn-blue:hover { background: #1b6ec2; }
+        .btn-blue:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn-ghost { background: transparent; color: #37352f; padding: 6px 10px; border-radius: 4px; font-size: 13px; cursor: pointer; border: none; transition: background 0.1s; }
         .btn-ghost:hover { background: #efefef; }
 
@@ -113,6 +114,21 @@
         .thumb { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; cursor: pointer; border: 1px solid #e8e8e8; flex-shrink: 0; }
         .thumb:hover { opacity: 0.8; }
 
+        /* Thumbnail hover popup */
+        .thumb-wrap { position: relative; display: inline-block; }
+        .thumb-popup {
+            display: none; position: fixed;
+            background: #fff; border: 1px solid #e8e8e8; border-radius: 8px; padding: 6px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.16); z-index: 60; gap: 6px; flex-wrap: wrap; justify-content: center;
+            pointer-events: none;
+        }
+        .thumb-popup.visible { display: flex; pointer-events: auto; }
+        .thumb-popup img {
+            width: 180px; height: 130px; object-fit: cover; border-radius: 6px; cursor: pointer;
+            border: 2px solid transparent; transition: border-color 0.15s, transform 0.15s;
+        }
+        .thumb-popup img:hover { border-color: #2383e2; transform: scale(1.03); }
+
         /* Lightbox */
         .lightbox { position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; cursor: zoom-out; }
         .lightbox img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
@@ -134,6 +150,7 @@
         }
         .upload-area:hover { border-color: #2383e2; background: #f7f9fc; }
         .upload-area.dragover { border-color: #2383e2; background: #edf4fd; }
+        .upload-area.compact { padding: 8px; margin-top: 6px; font-size: 12px; border-width: 1px; }
 
         /* AI Settings & Import */
         .key-input-wrap { display: flex; gap: 6px; align-items: center; }
@@ -162,14 +179,21 @@
         .btn-red:hover { background: #c53030; }
         .items-table tr.row-selected td { background: #edf4fd !important; }
 
-        /* Screenshot preview in modal */
-        .screenshot-preview { position: relative; display: inline-block; }
-        .screenshot-preview img { max-width: 200px; max-height: 140px; border-radius: 6px; border: 1px solid #e8e8e8; }
-        .screenshot-preview .remove-btn {
-            position: absolute; top: -6px; right: -6px; width: 20px; height: 20px;
+        /* Screenshots gallery in modal */
+        .screenshots-gallery { display: flex; flex-wrap: wrap; gap: 8px; }
+        .screenshots-gallery:empty { display: none; }
+        .screenshots-gallery .ss-thumb {
+            position: relative; display: inline-block;
+        }
+        .screenshots-gallery .ss-thumb img {
+            width: 100px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid #e8e8e8; cursor: pointer;
+        }
+        .screenshots-gallery .ss-thumb img:hover { opacity: 0.85; }
+        .screenshots-gallery .ss-remove {
+            position: absolute; top: -6px; right: -6px; width: 18px; height: 18px;
             background: #37352f; color: #fff; border-radius: 50%; display: flex;
-            align-items: center; justify-content: center; font-size: 12px; cursor: pointer;
-            border: 2px solid #fff;
+            align-items: center; justify-content: center; font-size: 11px; cursor: pointer;
+            border: 2px solid #fff; line-height: 1;
         }
 
         /* Mobile card list (hidden on desktop) */
@@ -261,6 +285,9 @@
 <div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
     <img id="lightbox-img" src="" alt="Screenshot">
 </div>
+
+<!-- Shared thumbnail hover popup -->
+<div id="thumb-popup" class="thumb-popup" onmouseenter="keepThumbPopup()" onmouseleave="hideThumbPopup()"></div>
 
 <!-- Auth Screen -->
 <div id="auth-screen" class="min-h-screen flex items-center justify-center p-4 bg-notion-sidebar">
@@ -514,18 +541,16 @@
             </div>
             <!-- Screenshot Upload -->
             <div>
-                <label class="block text-xs font-medium text-notion-secondary mb-1">Screenshot</label>
-                <div id="upload-area" class="upload-area" onclick="document.getElementById('file-input').click()"
-                     ondragover="event.preventDefault(); this.classList.add('dragover')"
+                <label class="block text-xs font-medium text-notion-secondary mb-1">Screenshots</label>
+                <div id="screenshots-gallery" class="screenshots-gallery"></div>
+                <div id="upload-area" class="upload-area" style="position:relative"
+                     ondragover="event.preventDefault(); event.stopPropagation(); this.classList.add('dragover')"
                      ondragleave="this.classList.remove('dragover')"
-                     ondrop="event.preventDefault(); this.classList.remove('dragover'); handleFileDrop(event)">
+                     ondrop="event.preventDefault(); event.stopPropagation(); this.classList.remove('dragover'); handleFileDrop(event)">
                     <svg class="w-5 h-5 mx-auto mb-1 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                    Click or drag to attach screenshot
-                </div>
-                <input id="file-input" type="file" accept="image/*" class="hidden" onchange="handleFileSelect(this)">
-                <div id="screenshot-preview" class="hidden mt-2 screenshot-preview">
-                    <img id="preview-img" src="" alt="Preview">
-                    <div class="remove-btn" onclick="removeScreenshot()">&times;</div>
+                    <span class="upload-label">Click or drag to attach screenshots</span>
+                    <input id="file-input" type="file" accept="image/*" multiple onchange="handleFileSelect(this)"
+                           style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer">
                 </div>
             </div>
             <div class="flex gap-2 pt-1">
@@ -555,10 +580,8 @@
                     <svg class="w-4 h-4 text-notion-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
-            <!-- Screenshot in detail view -->
-            <div id="detail-screenshot" class="hidden mt-3">
-                <img id="detail-screenshot-img" src="" alt="Screenshot" class="max-w-full max-h-64 rounded-lg border border-notion-border cursor-pointer" onclick="openLightbox(this.src)">
-            </div>
+            <!-- Screenshots in detail view -->
+            <div id="detail-screenshots" class="hidden mt-3" style="display:flex;flex-wrap:wrap;gap:8px"></div>
             <div class="flex items-center gap-3 mt-3 text-xs text-notion-secondary detail-timestamps">
                 <span id="detail-created"></span>
                 <span id="detail-updated"></span>
@@ -727,7 +750,8 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentItems = [];
 let currentDetailItem = null;
-let pendingScreenshotFile = null;
+let pendingScreenshotFiles = [];  // new files to upload
+let existingScreenshotUrls = [];  // existing URLs from DB (can be removed individually)
 let _cachedUserEmail = '';
 async function getCurrentUserEmail() {
     if (_cachedUserEmail) return _cachedUserEmail;
@@ -920,8 +944,9 @@ function renderItems(items) {
     tbody.innerHTML = items.map(item => {
         const isDone = item.status === 'fixed' || item.status === 'done';
         const isSel = selectedIds.has(item.id);
-        const thumbHtml = item.screenshot_url
-            ? `<img src="${esc(item.screenshot_url)}" class="thumb" onclick="event.stopPropagation(); openLightbox('${esc(item.screenshot_url)}')" alt="Screenshot">`
+        const ssUrls = parseScreenshotUrls(item.screenshot_url);
+        const thumbHtml = ssUrls.length > 0
+            ? `<div class="thumb-wrap" onclick="event.stopPropagation()" data-urls="${escAttr(JSON.stringify(ssUrls))}" onmouseenter="showThumbPopup(this, JSON.parse(this.dataset.urls))" onmouseleave="hideThumbPopup()"><img src="${esc(ssUrls[0])}" class="thumb" alt="Screenshot">${ssUrls.length > 1 ? '<span style="position:absolute;bottom:-2px;right:-4px;background:#2383e2;color:#fff;font-size:9px;padding:0 3px;border-radius:6px;font-weight:600;line-height:15px">'+ssUrls.length+'</span>' : ''}</div>`
             : '';
         return `
         <tr class="${isSel ? 'row-selected' : ''}" onclick="openDetail('${item.id}')">
@@ -973,8 +998,9 @@ function renderItems(items) {
     cards.innerHTML = items.map(item => {
         const isDone = item.status === 'fixed' || item.status === 'done';
         const isSel = selectedIds.has(item.id);
-        const thumbHtml = item.screenshot_url
-            ? `<img src="${esc(item.screenshot_url)}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;border:1px solid #e8e8e8;flex-shrink:0" onclick="event.stopPropagation(); openLightbox('${esc(item.screenshot_url)}')" alt="">`
+        const ssUrlsM = parseScreenshotUrls(item.screenshot_url);
+        const thumbHtml = ssUrlsM.length > 0
+            ? `<div class="thumb-wrap" onclick="event.stopPropagation()" data-urls="${escAttr(JSON.stringify(ssUrlsM))}" onmouseenter="showThumbPopup(this, JSON.parse(this.dataset.urls))" onmouseleave="hideThumbPopup()"><img src="${esc(ssUrlsM[0])}" style="width:32px;height:32px;border-radius:4px;object-fit:cover;border:1px solid #e8e8e8;flex-shrink:0" alt="">${ssUrlsM.length > 1 ? '<span style="position:absolute;bottom:-2px;right:-4px;background:#2383e2;color:#fff;font-size:9px;padding:0 3px;border-radius:6px;font-weight:600;line-height:15px">'+ssUrlsM.length+'</span>' : ''}</div>`
             : '';
         return `
         <div class="item-card ${isSel ? 'row-selected' : ''}" onclick="openDetail('${item.id}')" style="${isSel ? 'background:#edf4fd;border-color:#bdd4f7' : ''}">
@@ -1104,45 +1130,79 @@ async function batchDelete() {
 }
 
 // ============================================================
-// Screenshot Upload
+// Screenshot Upload (multi-screenshot)
 // ============================================================
-function handleFileSelect(input) {
-    if (input.files && input.files[0]) {
-        pendingScreenshotFile = input.files[0];
-        showPreview(input.files[0]);
+function parseScreenshotUrls(val) {
+    if (!val) return [];
+    if (typeof val === 'string' && val.startsWith('[')) {
+        try { return JSON.parse(val); } catch(e) { return [val]; }
     }
+    return [val];
+}
+
+function handleFileSelect(input) {
+    if (!input.files) return;
+    for (const f of input.files) {
+        if (f.type.startsWith('image/')) pendingScreenshotFiles.push(f);
+    }
+    input.value = '';
+    renderScreenshotsGallery();
 }
 
 function handleFileDrop(event) {
     const files = event.dataTransfer.files;
-    if (files && files[0] && files[0].type.startsWith('image/')) {
-        pendingScreenshotFile = files[0];
-        showPreview(files[0]);
+    for (const f of files) {
+        if (f.type.startsWith('image/')) pendingScreenshotFiles.push(f);
     }
+    renderScreenshotsGallery();
 }
 
-function showPreview(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        document.getElementById('preview-img').src = e.target.result;
-        document.getElementById('screenshot-preview').classList.remove('hidden');
-        document.getElementById('upload-area').classList.add('hidden');
-    };
-    reader.readAsDataURL(file);
+function removeExistingScreenshot(idx) {
+    existingScreenshotUrls.splice(idx, 1);
+    renderScreenshotsGallery();
 }
 
-function removeScreenshot() {
-    pendingScreenshotFile = null;
-    document.getElementById('screenshot-preview').classList.add('hidden');
-    document.getElementById('upload-area').classList.remove('hidden');
-    document.getElementById('file-input').value = '';
-    // Mark for removal on save
-    document.getElementById('screenshot-preview').dataset.remove = 'true';
+function removePendingScreenshot(idx) {
+    pendingScreenshotFiles.splice(idx, 1);
+    renderScreenshotsGallery();
+}
+
+function renderScreenshotsGallery() {
+    const gallery = document.getElementById('screenshots-gallery');
+    let html = '';
+    existingScreenshotUrls.forEach((url, i) => {
+        html += `<div class="ss-thumb"><img src="${esc(url)}" onclick="openLightbox('${esc(url)}')" alt="Screenshot"><div class="ss-remove" onclick="removeExistingScreenshot(${i})">&times;</div></div>`;
+    });
+    pendingScreenshotFiles.forEach((file, i) => {
+        html += `<div class="ss-thumb" id="pending-ss-${i}"><img src="" alt="New screenshot"><div class="ss-remove" onclick="removePendingScreenshot(${i})">&times;</div></div>`;
+    });
+    gallery.innerHTML = html;
+    // Load previews for pending files
+    pendingScreenshotFiles.forEach((file, i) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const el = document.getElementById('pending-ss-' + i);
+            if (el) el.querySelector('img').src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+    // Update upload area text
+    const ua = document.getElementById('upload-area');
+    const total = existingScreenshotUrls.length + pendingScreenshotFiles.length;
+    if (total > 0) {
+        ua.classList.add('compact');
+        ua.querySelector('.upload-label').textContent = 'Drop or click to add more screenshots';
+        ua.querySelector('svg').classList.add('hidden');
+    } else {
+        ua.classList.remove('compact');
+        ua.querySelector('.upload-label').textContent = 'Click or drag to attach screenshots';
+        ua.querySelector('svg').classList.remove('hidden');
+    }
 }
 
 async function uploadScreenshot(file, itemId) {
     const ext = file.name.split('.').pop();
-    const path = `${itemId}.${ext}`;
+    const path = `${itemId}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
     const { error } = await sb.storage.from('screenshots').upload(path, file, { upsert: true });
     if (error) { showToast('Upload error: ' + error.message, 'error'); return null; }
     const { data } = sb.storage.from('screenshots').getPublicUrl(path);
@@ -1162,11 +1222,9 @@ function openAddModal() {
     document.getElementById('item-priority').value = 'medium';
     document.getElementById('item-status').value = 'open';
     document.getElementById('status-field').classList.add('hidden');
-    pendingScreenshotFile = null;
-    document.getElementById('screenshot-preview').classList.add('hidden');
-    document.getElementById('screenshot-preview').dataset.remove = '';
-    document.getElementById('upload-area').classList.remove('hidden');
-    document.getElementById('file-input').value = '';
+    pendingScreenshotFiles = [];
+    existingScreenshotUrls = [];
+    renderScreenshotsGallery();
     document.getElementById('item-modal').classList.remove('hidden');
     document.getElementById('item-title-input').focus();
 }
@@ -1181,21 +1239,18 @@ function openEditModal(item) {
     document.getElementById('item-priority').value = item.priority;
     document.getElementById('item-status').value = item.status;
     document.getElementById('status-field').classList.remove('hidden');
-    pendingScreenshotFile = null;
-    document.getElementById('screenshot-preview').dataset.remove = '';
-    if (item.screenshot_url) {
-        document.getElementById('preview-img').src = item.screenshot_url;
-        document.getElementById('screenshot-preview').classList.remove('hidden');
-        document.getElementById('upload-area').classList.add('hidden');
-    } else {
-        document.getElementById('screenshot-preview').classList.add('hidden');
-        document.getElementById('upload-area').classList.remove('hidden');
-    }
-    document.getElementById('file-input').value = '';
+    pendingScreenshotFiles = [];
+    existingScreenshotUrls = parseScreenshotUrls(item.screenshot_url);
+    renderScreenshotsGallery();
     document.getElementById('item-modal').classList.remove('hidden');
 }
 
 async function saveItem() {
+    const saveBtn = document.querySelector('#item-modal .btn-blue');
+    if (saveBtn.disabled) return;
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
     const id = document.getElementById('edit-item-id').value;
     const payload = {
         type: document.getElementById('item-type').value,
@@ -1206,52 +1261,62 @@ async function saveItem() {
         status: document.getElementById('item-status').value,
     };
 
-    if (!payload.title) { showToast('Title is required', 'error'); return; }
+    if (!payload.title) { showToast('Title is required', 'error'); saveBtn.disabled = false; saveBtn.textContent = 'Save'; return; }
 
-    if (id) {
-        const oldItem = currentItems.find(i => i.id === id);
-        const ue = await getCurrentUserEmail();
-        const changes = [];
-        for (const key of ['title', 'description', 'type', 'category', 'priority', 'status']) {
-            if (oldItem[key] !== payload[key]) {
-                changes.push({ item_id: id, field_changed: key, old_value: oldItem[key] || '', new_value: payload[key], user_email: ue });
-            }
-        }
-
-        // Handle screenshot
-        if (pendingScreenshotFile) {
-            const url = await uploadScreenshot(pendingScreenshotFile, id);
-            if (url) payload.screenshot_url = url;
-        } else if (document.getElementById('screenshot-preview').dataset.remove === 'true') {
-            payload.screenshot_url = null;
-        }
-
-        const { error } = await sb.from('items').update(payload).eq('id', id);
-        if (error) { showToast('Error: ' + error.message, 'error'); return; }
-        if (changes.length > 0) await sb.from('history').insert(changes);
-        showToast('Item updated');
-    } else {
-        const { data: inserted, error } = await sb.from('items').insert([payload]).select();
-        if (error) { showToast('Error: ' + error.message, 'error'); return; }
-
-        // Upload screenshot for new item
-        if (pendingScreenshotFile && inserted && inserted[0]) {
-            const url = await uploadScreenshot(pendingScreenshotFile, inserted[0].id);
-            if (url) {
-                await sb.from('items').update({ screenshot_url: url }).eq('id', inserted[0].id);
-            }
-        }
-        // Add "created" history entry
-        if (inserted && inserted[0]) {
+    try {
+        if (id) {
+            const oldItem = currentItems.find(i => i.id === id);
             const ue = await getCurrentUserEmail();
-            await sb.from('history').insert([{ item_id: inserted[0].id, field_changed: 'created', old_value: '', new_value: payload.title || 'New item', changed_at: new Date().toISOString(), user_email: ue }]);
-        }
-        showToast('Item created');
-    }
+            const changes = [];
+            for (const key of ['title', 'description', 'type', 'category', 'priority', 'status']) {
+                if (oldItem[key] !== payload[key]) {
+                    changes.push({ item_id: id, field_changed: key, old_value: oldItem[key] || '', new_value: payload[key], user_email: ue });
+                }
+            }
 
-    closeModal('item-modal');
-    await loadItems();
-    if (currentDetailItem && id) openDetail(id);
+            // Handle screenshots
+            const newUrls = [];
+            for (const f of pendingScreenshotFiles) {
+                const url = await uploadScreenshot(f, id);
+                if (url) newUrls.push(url);
+            }
+            const allUrls = [...existingScreenshotUrls, ...newUrls];
+            payload.screenshot_url = allUrls.length > 0 ? JSON.stringify(allUrls) : null;
+
+            const { error } = await sb.from('items').update(payload).eq('id', id);
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+            if (changes.length > 0) await sb.from('history').insert(changes);
+            showToast('Item updated');
+        } else {
+            const { data: inserted, error } = await sb.from('items').insert([payload]).select();
+            if (error) { showToast('Error: ' + error.message, 'error'); return; }
+
+            // Upload screenshots for new item
+            if (pendingScreenshotFiles.length > 0 && inserted && inserted[0]) {
+                const newUrls = [];
+                for (const f of pendingScreenshotFiles) {
+                    const url = await uploadScreenshot(f, inserted[0].id);
+                    if (url) newUrls.push(url);
+                }
+                if (newUrls.length > 0) {
+                    await sb.from('items').update({ screenshot_url: JSON.stringify(newUrls) }).eq('id', inserted[0].id);
+                }
+            }
+            // Add "created" history entry
+            if (inserted && inserted[0]) {
+                const ue = await getCurrentUserEmail();
+                await sb.from('history').insert([{ item_id: inserted[0].id, field_changed: 'created', old_value: '', new_value: payload.title || 'New item', changed_at: new Date().toISOString(), user_email: ue }]);
+            }
+            showToast('Item created');
+        }
+
+        closeModal('item-modal');
+        await loadItems();
+        if (currentDetailItem && id) openDetail(id);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+    }
 }
 
 // ============================================================
@@ -1270,12 +1335,15 @@ async function openDetail(id) {
     document.getElementById('detail-title').textContent = item.title;
     document.getElementById('detail-description').textContent = item.description || 'No description.';
 
-    // Screenshot
-    const ssEl = document.getElementById('detail-screenshot');
-    if (item.screenshot_url) {
-        document.getElementById('detail-screenshot-img').src = item.screenshot_url;
+    // Screenshots
+    const ssEl = document.getElementById('detail-screenshots');
+    const detailUrls = parseScreenshotUrls(item.screenshot_url);
+    if (detailUrls.length > 0) {
+        ssEl.innerHTML = detailUrls.map(u => `<img src="${esc(u)}" alt="Screenshot" class="max-h-64 rounded-lg border border-notion-border cursor-pointer" style="max-width:100%" onclick="openLightbox('${esc(u)}')">`).join('');
         ssEl.classList.remove('hidden');
+        ssEl.style.display = 'flex';
     } else {
+        ssEl.innerHTML = '';
         ssEl.classList.add('hidden');
     }
 
@@ -1459,6 +1527,30 @@ function closeLightbox() {
     document.getElementById('lightbox').classList.add('hidden');
 }
 
+// Thumbnail hover popup
+let thumbPopupTimer = null;
+function showThumbPopup(el, urls) {
+    clearTimeout(thumbPopupTimer);
+    const popup = document.getElementById('thumb-popup');
+    popup.innerHTML = urls.map(u => `<img src="${esc(u)}" onclick="hideThumbPopup(); openLightbox('${esc(u)}')" alt="Preview">`).join('');
+    popup.classList.add('visible');
+    // Position: above the thumbnail, centered
+    const rect = el.getBoundingClientRect();
+    const pw = Math.min(urls.length, 3) * 192 + 12; // estimate popup width
+    let left = rect.left + rect.width / 2 - pw / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    let top = rect.top - 148; // 130px img + padding + gap
+    if (top < 8) top = rect.bottom + 8; // flip below if no room above
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
+}
+function keepThumbPopup() { clearTimeout(thumbPopupTimer); }
+function hideThumbPopup() {
+    thumbPopupTimer = setTimeout(() => {
+        document.getElementById('thumb-popup').classList.remove('visible');
+    }, 150);
+}
+
 // ============================================================
 // Utilities
 // ============================================================
@@ -1483,6 +1575,9 @@ function esc(str) {
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
+}
+function escAttr(str) {
+    return esc(str).replace(/"/g, '&quot;');
 }
 
 function showToast(msg, type = 'success') {
@@ -1781,6 +1876,14 @@ async function importParsedItems() {
         importBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg> Import Selected';
     }
 }
+
+// Prevent browser from navigating when images are dropped outside the upload area
+document.addEventListener('dragover', e => {
+    if (!e.target.closest('#upload-area')) e.preventDefault();
+});
+document.addEventListener('drop', e => {
+    if (!e.target.closest('#upload-area')) e.preventDefault();
+});
 
 // Event listeners
 document.getElementById('item-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('item-modal'); });
